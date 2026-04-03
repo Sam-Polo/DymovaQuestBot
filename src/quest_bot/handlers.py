@@ -40,6 +40,27 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.effective_message.reply_text(help_admin_text())
 
 
+async def cmd_clear_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    settings: Settings = context.application.bot_data["settings"]
+    if not _is_admin(update.effective_user.id if update.effective_user else None, settings):
+        await update.effective_message.reply_text("Эта команда доступна только администраторам. 🔒")
+        return
+    args = [a.lower() for a in (context.args or [])]
+    if args != ["confirm"]:
+        await update.effective_message.reply_text(
+            "Обнулит все записи вопросов (статистика /stats и счётчики в /users по вопросам). "
+            "Пользователи с /start останутся.\n"
+            "Подтверждение: /clear_stats confirm"
+        )
+        return
+    db: Database = context.application.bot_data["db"]
+    n = db.clear_all_question_threads()
+    log.info("clear_stats: question_threads removed count=%s", n)
+    await update.effective_message.reply_text(
+        f"Готово. Удалено записей о вопросах: {n}. Таблица пользователей не менялась. 🧹"
+    )
+
+
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     settings: Settings = context.application.bot_data["settings"]
     if not _is_admin(update.effective_user.id if update.effective_user else None, settings):

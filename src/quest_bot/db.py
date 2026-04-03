@@ -167,6 +167,13 @@ class Database:
                 question_text=str(row["question_text"]),
             )
 
+    def clear_all_question_threads(self) -> int:
+        # сброс статистики по вопросам; пользователей (users) не трогаем
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM question_threads")
+            conn.commit()
+            return int(cur.rowcount or 0)
+
     def mark_thread_answered(self, psych_chat_id: int, psych_message_id: int) -> None:
         now = utc_iso_now()
         with self._connect() as conn:

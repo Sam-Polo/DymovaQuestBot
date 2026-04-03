@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from quest_bot.config import get_settings
 from quest_bot.db import Database
 from quest_bot.handlers import (
+    cmd_clear_stats,
     cmd_help,
     cmd_start,
     cmd_stats,
@@ -40,6 +41,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", cmd_help))
     application.add_handler(CommandHandler("stats", cmd_stats))
     application.add_handler(CommandHandler("users", cmd_users))
+    application.add_handler(CommandHandler("clear_stats", cmd_clear_stats))
 
     application.add_handler(
         MessageHandler(

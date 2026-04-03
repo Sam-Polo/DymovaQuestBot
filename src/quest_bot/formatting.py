@@ -13,8 +13,8 @@ def format_question_for_psych(first_name: str | None, username: str | None, ques
 
 def answer_for_user(psychologist_text: str) -> str:
     body = psychologist_text.strip()
-    # две пустые строки между заголовком и текстом ответа
-    return f"Ваш ответ на вопрос:\n\n\n{body} ✅"
+    # одна пустая строка между заголовком и текстом ответа
+    return f"Ваш ответ на вопрос:\n\n{body} ✅"
 
 
 def greeting_text() -> str:
@@ -42,6 +42,7 @@ def help_admin_text() -> str:
         "/start — регистрация сценария / приветствие\n"
         "/stats — сводка: пользователи, вопросы, с ответом / без ответа\n"
         "/users — список пользователей с количеством вопросов\n"
+        "/clear_stats confirm — обнулить вопросы в БД (осторожно)\n"
         "/help — этот текст\n"
     )
 

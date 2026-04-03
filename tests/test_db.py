@@ -89,6 +89,24 @@ def test_stats_answered_unanswered(tmp_path):
     assert st2["questions"] == 2
 
 
+def test_clear_all_question_threads(tmp_path):
+    db = Database(str(tmp_path / "f.db"))
+    db.init()
+    db.insert_question_thread(
+        psych_chat_id=-100,
+        psych_message_id=1,
+        user_id=1,
+        user_message_id=1,
+        question_text="x",
+    )
+    assert db.stats()["questions"] == 1
+    n = db.clear_all_question_threads()
+    assert n == 1
+    assert db.stats()["questions"] == 0
+    assert db.stats()["answered"] == 0
+    assert db.stats()["unanswered"] == 0
+
+
 def test_user_questions_total_after_inserts(tmp_path):
     db = Database(str(tmp_path / "d.db"))
     db.init()

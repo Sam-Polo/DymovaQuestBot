@@ -27,7 +27,7 @@ def test_format_question_for_psych():
 def test_answer_for_user():
     t = answer_for_user("  да  ")
     assert "Ваш ответ на вопрос:" in t
-    assert "\n\n\n" in t
+    assert t.startswith("Ваш ответ на вопрос:\n\n")
     assert "да" in t
 
 
