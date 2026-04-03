@@ -64,7 +64,7 @@ jobs:
             exit 1
           fi
           PORT="${SSH_PORT_VAR:-${SSH_PORT_SECRET:-22}}"
-          ssh -p "$PORT" \
+          ssh -v -p "$PORT" \
             -o StrictHostKeyChecking=accept-new \
             -o IdentitiesOnly=yes \
             "${SSH_USER}@${SSH_HOST}" \
