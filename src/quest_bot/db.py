@@ -54,7 +54,15 @@ class Database:
         Path(self._path).parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript(SCHEMA)
+            self._ensure_answered_at_column(conn)
             conn.commit()
+
+    def _ensure_answered_at_column(self, conn: sqlite3.Connection) -> None:
+        # миграция для уже существующих sqlite без колонки
+        cur = conn.execute("PRAGMA table_info(question_threads)")
+        cols = {str(row["name"]) for row in cur.fetchall()}
+        if "answered_at" not in cols:
+            conn.execute("ALTER TABLE question_threads ADD COLUMN answered_at TEXT")
 
     @contextmanager
     def _connect(self):
@@ -159,11 +167,39 @@ class Database:
                 question_text=str(row["question_text"]),
             )
 
+    def mark_thread_answered(self, psych_chat_id: int, psych_message_id: int) -> None:
+        now = utc_iso_now()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                UPDATE question_threads
+                SET answered_at = ?
+                WHERE psych_chat_id = ? AND psych_message_id = ?
+                """,
+                (now, psych_chat_id, psych_message_id),
+            )
+            conn.commit()
+
     def stats(self) -> dict[str, int]:
         with self._connect() as conn:
-            users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-            questions = conn.execute("SELECT COUNT(*) AS c FROM question_threads").fetchone()["c"]
-        return {"users": int(users), "questions": int(questions)}
+            users = int(conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"])
+            questions = int(conn.execute("SELECT COUNT(*) AS c FROM question_threads").fetchone()["c"])
+            answered = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS c FROM question_threads WHERE answered_at IS NOT NULL"
+                ).fetchone()["c"]
+            )
+            unanswered = int(
+                conn.execute(
+                    "SELECT COUNT(*) AS c FROM question_threads WHERE answered_at IS NULL"
+                ).fetchone()["c"]
+            )
+        return {
+            "users": users,
+            "questions": questions,
+            "answered": answered,
+            "unanswered": unanswered,
+        }
 
     def list_users_with_counts(self) -> list[UserRow]:
         with self._connect() as conn:

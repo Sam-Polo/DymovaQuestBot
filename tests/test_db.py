@@ -41,17 +41,52 @@ def test_thread_roundtrip(tmp_path):
 def test_stats_and_users(tmp_path):
     db = Database(str(tmp_path / "c.db"))
     db.init()
-    assert db.stats() == {"users": 0, "questions": 0}
+    assert db.stats() == {
+        "users": 0,
+        "questions": 0,
+        "answered": 0,
+        "unanswered": 0,
+    }
     db.upsert_user_start(5, None, "A")
     db.upsert_user_start(7, "u7", "B")
     st = db.stats()
     assert st["users"] == 2
     assert st["questions"] == 0
+    assert st["answered"] == 0
+    assert st["unanswered"] == 0
     rows = db.list_users_with_counts()
     assert len(rows) == 2
     by_id = {r.tg_user_id: r for r in rows}
     assert by_id[5].questions_total == 0
     assert by_id[7].questions_total == 0
+
+
+def test_stats_answered_unanswered(tmp_path):
+    db = Database(str(tmp_path / "e.db"))
+    db.init()
+    db.insert_question_thread(
+        psych_chat_id=-100,
+        psych_message_id=10,
+        user_id=1,
+        user_message_id=1,
+        question_text="a",
+    )
+    db.insert_question_thread(
+        psych_chat_id=-100,
+        psych_message_id=11,
+        user_id=1,
+        user_message_id=2,
+        question_text="b",
+    )
+    st = db.stats()
+    assert st["questions"] == 2
+    assert st["unanswered"] == 2
+    assert st["answered"] == 0
+    db.mark_thread_answered(-100, 10)
+    st2 = db.stats()
+    assert st2["answered"] == 1
+    assert st2["unanswered"] == 1
+    assert st2["questions"] == 2
 
 
 def test_user_questions_total_after_inserts(tmp_path):

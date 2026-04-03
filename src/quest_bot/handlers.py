@@ -51,6 +51,8 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Статистика 📊\n"
         f"Пользователей (нажимали /start): {st['users']}\n"
         f"Всего вопросов: {st['questions']}\n"
+        f"С ответом: {st['answered']}\n"
+        f"Без ответа: {st['unanswered']}\n"
     )
     await update.effective_message.reply_text(text)
 
@@ -107,10 +109,12 @@ async def private_text_question(update: Update, context: ContextTypes.DEFAULT_TY
     if not q:
         await msg.reply_text(need_text_only())
         return
-    used = db.count_questions_today_msk(user.id)
-    if used >= 3:
-        await msg.reply_text(limit_reached_text())
-        return
+    # лимит 3/сутки не для админов из ADMIN_IDS
+    if not _is_admin(user.id, settings):
+        used = db.count_questions_today_msk(user.id)
+        if used >= 3:
+            await msg.reply_text(limit_reached_text())
+            return
     psych_text = format_question_for_psych(user.first_name, user.username, q)
     try:
         sent: Message = await context.bot.send_message(chat_id=settings.target_chat_id, text=psych_text)
@@ -171,6 +175,9 @@ async def psych_chat_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
     text_user = answer_for_user(answer_raw)
     quote = truncate_for_quote(thread.question_text)
+    chat_id = int(chat.id)
+    parent_mid = int(parent.message_id)
+    delivered = False
     try:
         await context.bot.send_message(
             chat_id=thread.user_id,
@@ -181,6 +188,7 @@ async def psych_chat_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 quote=quote,
             ),
         )
+        delivered = True
     except BadRequest as e:
         log.info("send with quote failed (%s), retry reply only", type(e).__name__)
         try:
@@ -192,7 +200,10 @@ async def psych_chat_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     chat_id=thread.user_id,
                 ),
             )
+            delivered = True
         except TelegramError as e2:
             log.warning("failed to deliver answer to user: %s", type(e2).__name__)
     except TelegramError as e:
         log.warning("failed to deliver answer to user: %s", type(e).__name__)
+    if delivered:
+        db.mark_thread_answered(chat_id, parent_mid)
