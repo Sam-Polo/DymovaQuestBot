@@ -1,7 +1,13 @@
-name: ci
+name: ci-cd
 
 on:
   push:
+  workflow_dispatch:
+
+# один деплой за раз, без отмены середины ssh
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
 
 jobs:
   tests:
@@ -20,3 +26,34 @@ jobs:
         env:
           PYTHONPATH: src
         run: pytest -q
+
+  deploy:
+    needs: tests
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    steps:
+      # нужны: secrets SSH_PRIVATE_KEY, SSH_HOST, SSH_USER
+      # и repository variable DEPLOY_PATH — абсолютный путь к клону репо на сервере
+      # опционально variable SSH_PORT (иначе 22)
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy on server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SSH_PORT: ${{ vars.SSH_PORT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_PATH:-}" ]; then
+            echo "Задайте в GitHub: Settings → Secrets and variables → Actions → Variables → DEPLOY_PATH (путь к репозиторию на сервере)"
+            exit 1
+          fi
+          PORT="${SSH_PORT:-22}"
+          ssh -p "$PORT" \
+            -o StrictHostKeyChecking=accept-new \
+            -o IdentitiesOnly=yes \
+            "${SSH_USER}@${SSH_HOST}" \
+            "set -euo pipefail; cd \"${DEPLOY_PATH}\"; git fetch origin; git checkout main; git pull --ff-only origin main; docker compose up -d --build"
