@@ -1,0 +1,36 @@
+# env / секреты
+.env
+.env.*
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ENV/
+
+# тесты / кеш
+.pytest_cache/
+.coverage
+htmlcov/
+
+# sqlite / данные
+*.db
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+
+# build
+dist/
+build/
+*.egg-info/

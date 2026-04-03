@@ -1,0 +1,13 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SQLITE_PATH: /data/quest_bot.db
+    volumes:
+      - quest_data:/data
+
+volumes:
+  quest_data:
