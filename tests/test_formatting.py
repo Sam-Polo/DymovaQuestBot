@@ -25,8 +25,10 @@ def test_format_question_for_psych():
 
 
 def test_answer_for_user():
-    assert "Ваш ответ" in answer_for_user("  да  ")
-    assert "да" in answer_for_user("  да  ")
+    t = answer_for_user("  да  ")
+    assert "Ваш ответ на вопрос:" in t
+    assert "\n\n\n" in t
+    assert "да" in t
 
 
 def test_greeting_nonempty():
