@@ -64,8 +64,7 @@ jobs:
             exit 1
           fi
           PORT="${SSH_PORT_VAR:-${SSH_PORT_SECRET:-22}}"
-          ssh -v -p "$PORT" \
+          ssh -p "$PORT" \
             -o StrictHostKeyChecking=accept-new \
-            -o IdentitiesOnly=yes \
             "${SSH_USER}@${SSH_HOST}" \
             "set -euo pipefail; cd \"${DEPLOY_PATH}\"; git fetch origin; git checkout main; git pull --ff-only origin main; docker compose up -d --build"
