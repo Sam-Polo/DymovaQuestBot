@@ -36,6 +36,7 @@ def main() -> None:
     )
     application.bot_data["settings"] = settings
     application.bot_data["db"] = db
+    application.bot_data["psych_chat_id"] = settings.target_chat_id
 
     application.add_handler(CommandHandler("start", cmd_start))
     application.add_handler(CommandHandler("help", cmd_help))
@@ -43,11 +44,9 @@ def main() -> None:
     application.add_handler(CommandHandler("users", cmd_users))
     application.add_handler(CommandHandler("clear_stats", cmd_clear_stats))
 
+    # не привязываемся к filters.Chat(chat_id=...): после миграции в супергруппу id меняется
     application.add_handler(
-        MessageHandler(
-            filters.Chat(chat_id=settings.target_chat_id) & filters.REPLY,
-            psych_chat_reply,
-        )
+        MessageHandler(filters.ChatType.GROUPS & filters.REPLY, psych_chat_reply),
     )
     application.add_handler(
         MessageHandler(

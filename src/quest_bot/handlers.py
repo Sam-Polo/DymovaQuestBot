@@ -1,7 +1,7 @@
 import logging
 
 from telegram import BotCommand, Message, ReplyParameters, Update
-from telegram.error import BadRequest, TelegramError
+from telegram.error import BadRequest, ChatMigrated, TelegramError
 from telegram.ext import ContextTypes
 
 from quest_bot.config import Settings
@@ -24,6 +24,11 @@ def _is_admin(user_id: int | None, settings: Settings) -> bool:
     if user_id is None:
         return False
     return user_id in settings.admin_ids
+
+
+def _psych_chat_id(context: ContextTypes.DEFAULT_TYPE) -> int:
+    # после ChatMigrated telegram даёт новый id супергруппы — храним в bot_data
+    return int(context.application.bot_data["psych_chat_id"])
 
 
 async def post_init_set_commands(application) -> None:
@@ -137,8 +142,24 @@ async def private_text_question(update: Update, context: ContextTypes.DEFAULT_TY
             await msg.reply_text(limit_reached_text())
             return
     psych_text = format_question_for_psych(user.first_name, user.username, q)
+    psych_chat_id = _psych_chat_id(context)
     try:
-        sent: Message = await context.bot.send_message(chat_id=settings.target_chat_id, text=psych_text)
+        sent: Message = await context.bot.send_message(chat_id=psych_chat_id, text=psych_text)
+    except ChatMigrated as e:
+        # обычная ситуация: группа стала супергруппой, старый chat_id больше не принимается
+        old_id = psych_chat_id
+        context.application.bot_data["psych_chat_id"] = e.new_chat_id
+        log.warning(
+            "psych chat migrated: old_chat_id=%s new_chat_id=%s — обнови TARGET_CHAT_ID в .env для следующих деплоев",
+            old_id,
+            e.new_chat_id,
+        )
+        try:
+            sent = await context.bot.send_message(chat_id=e.new_chat_id, text=psych_text)
+        except TelegramError as e2:
+            log.warning("failed to send after chat migrate: %s", type(e2).__name__)
+            await msg.reply_text("Не удалось отправить вопрос. Попробуй позже. 🙏")
+            return
     except TelegramError as e:
         log.warning("failed to send question to psych chat: %s", type(e).__name__)
         await msg.reply_text("Не удалось отправить вопрос. Попробуй позже. 🙏")
@@ -171,13 +192,12 @@ async def private_non_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def psych_chat_reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    settings: Settings = context.application.bot_data["settings"]
     db: Database = context.application.bot_data["db"]
     msg = update.effective_message
     chat = update.effective_chat
     if msg is None or chat is None:
         return
-    if chat.id != settings.target_chat_id:
+    if chat.id != _psych_chat_id(context):
         return
     if msg.from_user and msg.from_user.id == context.bot.id:
         return
