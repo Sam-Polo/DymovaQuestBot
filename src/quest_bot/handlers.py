@@ -115,7 +115,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     caption = greeting_text()
     photo_path = welcome_photo_path()
     if photo_path.is_file():
-        await msg.reply_photo(photo=InputFile(photo_path), caption=caption)
+        # InputFile(Path) ломает httpx multipart (нет .read) — отдаём bytes + имя файла
+        await msg.reply_photo(
+            photo=InputFile(photo_path.read_bytes(), filename=photo_path.name),
+            caption=caption,
+        )
     else:
         log.warning("welcome photo not found, sending text only")
         await msg.reply_text(caption)

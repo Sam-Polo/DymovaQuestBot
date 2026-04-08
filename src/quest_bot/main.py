@@ -1,6 +1,6 @@
 import logging
 
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from quest_bot.config import get_settings
 from quest_bot.db import Database
@@ -18,6 +18,11 @@ from quest_bot.handlers import (
 from quest_bot.log_setup import setup_logging
 
 log = logging.getLogger(__name__)
+
+
+async def _log_app_error(_update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if context.error:
+        log.error("telegram handler error", exc_info=context.error)
 
 
 def main() -> None:
@@ -60,6 +65,7 @@ def main() -> None:
             private_non_text,
         )
     )
+    application.add_error_handler(_log_app_error)
 
     log.info("starting polling")
     application.run_polling(drop_pending_updates=True)
