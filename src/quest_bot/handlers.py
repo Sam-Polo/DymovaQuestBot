@@ -1,6 +1,6 @@
 import logging
 
-from telegram import BotCommand, Message, ReplyParameters, Update
+from telegram import BotCommand, InputFile, Message, ReplyParameters, Update
 from telegram.error import BadRequest, ChatMigrated, TelegramError
 from telegram.ext import ContextTypes
 
@@ -15,6 +15,7 @@ from quest_bot.formatting import (
     need_start_text,
     need_text_only,
     truncate_for_quote,
+    welcome_photo_path,
 )
 
 log = logging.getLogger(__name__)
@@ -105,15 +106,19 @@ async def cmd_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    settings: Settings = context.application.bot_data["settings"]
     db: Database = context.application.bot_data["db"]
     user = update.effective_user
     if user is None:
         return
     db.upsert_user_start(user.id, user.username, user.first_name)
     msg = update.effective_message
-    # в группах тоже можно /start, но приветствие ориентировано на личку
-    await msg.reply_text(greeting_text())
+    caption = greeting_text()
+    photo_path = welcome_photo_path()
+    if photo_path.is_file():
+        await msg.reply_photo(photo=InputFile(photo_path), caption=caption)
+    else:
+        log.warning("welcome photo not found, sending text only")
+        await msg.reply_text(caption)
 
 
 async def private_text_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

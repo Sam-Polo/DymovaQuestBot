@@ -34,3 +34,5 @@ Desktop.ini
 dist/
 build/
 *.egg-info/
+
+tesp.md

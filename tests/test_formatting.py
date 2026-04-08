@@ -3,6 +3,7 @@ from quest_bot.formatting import (
     format_question_for_psych,
     greeting_text,
     user_header_line,
+    welcome_photo_path,
 )
 
 
@@ -32,4 +33,8 @@ def test_answer_for_user():
 
 
 def test_greeting_nonempty():
-    assert len(greeting_text()) > 40
+    g = greeting_text()
+    assert len(g) > 40
+    assert "✨" in g
+    assert len(g) <= 1024
+    assert welcome_photo_path().name == "photo_2026-04-07_11-41-13.jpg"
